@@ -674,13 +674,14 @@ dependencies = [
 [[package]]
 name = "eggersmann_app_server_auth"
 version = "0.1.0"
+source = "git+https://github.com/physics515/egg-server-auth?rev=2a26906#2a269069a246ed59395276864c60cd65f4d37dc7"
 dependencies = [
  "azure_identity",
  "azure_security_keyvault",
  "chrono",
  "jsonwebtoken",
  "playwright",
- "rand 0.8.5",
+ "rand 0.7.3",
  "reqwest",
  "rocket",
  "serde",
