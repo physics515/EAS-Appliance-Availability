@@ -1,0 +1,21 @@
+[package]
+name = "eggersmann_app_server_appliance_availability"
+version = "0.1.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+eggersmann_app_server_auth = {path = "../eggersmann-app-server--auth"}
+serde = { version = "~1", features = ["derive"] }
+serde_json = "~1"
+chrono = "~0"
+reqwest = { version = "~0", features = ["cookies", "blocking", "json", "rustls-tls"] }
+playwright = "~0"
+scraper = "~0"
+duration-string = "~0"
+fuzzy-matcher = "~0"
+office = "~0"
+urlencoding = "~2"
+azure_security_keyvault = "~0"
+azure_identity = "~0"
