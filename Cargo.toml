@@ -7,15 +7,15 @@ edition = "2021"
 
 [dependencies]
 eggersmann_app_server_auth = {git = "https://github.com/physics515/egg-server-auth"}
-serde = { version = "~1", features = ["derive"] }
-serde_json = "~1"
-chrono = "~0"
-reqwest = { version = "~0", features = ["cookies", "blocking", "json", "rustls-tls"] }
-playwright = "~0"
-scraper = "~0"
-duration-string = "~0"
-fuzzy-matcher = "~0"
-office = "~0"
-urlencoding = "~2"
-azure_security_keyvault = "~0"
-azure_identity = "~0"
+serde = { version = "*", features = ["derive"] }
+serde_json = "*"
+chrono = "*"
+reqwest = { version = "*", features = ["cookies", "blocking", "json", "rustls-tls"] }
+playwright = "*"
+scraper = "*"
+duration-string = "*"
+fuzzy-matcher = "*"
+office = "*"
+urlencoding = "*"
+azure_security_keyvault = "*"
+azure_identity = "*"
