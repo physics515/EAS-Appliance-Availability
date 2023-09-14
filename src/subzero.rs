@@ -1,4 +1,6 @@
-use super::AvailabilityRequest;
+use std::fs::File;
+use std::io::Write;
+
 use chrono::DateTime;
 use chrono::Utc;
 use duration_string::DurationString;
@@ -9,8 +11,8 @@ use reqwest::Body;
 use reqwest::Client;
 use scraper::{Html, Selector};
 use serde_json::{json, Value};
-use std::fs::File;
-use std::io::Write;
+
+use super::AvailabilityRequest;
 
 ///
 /// # SubZero Availability
@@ -112,62 +114,42 @@ async fn subzero_get_number_of_items(cookies: &str) -> u32 {
 	let mut headers = HeaderMap::new();
 	match HeaderValue::from_str(cookies) {
 		Ok(cookies) => headers.insert(header::COOKIE, cookies),
-		Err(e) => {
-			println!("Faild to add cookies to header: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
 	match HeaderValue::from_str(" Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36 Edg/99.0.1150.30") {
 		Ok(user_agent) => headers.insert(header::USER_AGENT, user_agent),
-		Err(e) => {
-			println!("Faild to add user agent to header: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
 	match HeaderValue::from_str("application/x-www-form-urlencoded") {
 		Ok(content_type) => headers.insert(header::CONTENT_TYPE, content_type),
-		Err(e) => {
-			println!("Faild to add content type to header: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
 	match HeaderValue::from_str(data.as_str()) {
 		Ok(data) => headers.insert("data", data),
-		Err(e) => {
-			println!("Faild to add data to header: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
 
 	let response = match client.get("https://order.subzero.com/instance1/servlet/WebDispatcher?mode=view&error=0").headers(headers).body(Body::from(data)).send().await {
 		Ok(response) => response,
-		Err(e) => {
-			println!("Failed to get number of items in cart response: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
+
 	let response_data = match response.text().await {
 		Ok(response_data) => response_data,
-		Err(e) => {
-			println!("Failed to get number of items in cart response data: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
+
 	let document = Html::parse_document(&response_data);
 	let tr_selector = match Selector::parse("tr") {
 		Ok(tr_selector) => tr_selector,
-		Err(e) => {
-			println!("Failed to get row selector: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
+
 	let my_scroll_table_selector = match Selector::parse("#myScrollTable") {
 		Ok(my_scroll_table_selector) => my_scroll_table_selector,
-		Err(e) => {
-			println!("Failed to get scroll table selector: {e:?}");
-			return 0;
-		}
+		Err(_) => return 0,
 	};
+
 	let my_scroll_table = document.select(&my_scroll_table_selector).next();
 	match my_scroll_table {
 		Some(my_scroll_table) => {
@@ -191,27 +173,20 @@ async fn subzero_remove_item(cookies: &str) {
 	let mut headers = HeaderMap::new();
 	match HeaderValue::from_str(cookies) {
 		Ok(cookies) => headers.insert(header::COOKIE, cookies),
-		Err(e) => {
-			println!("Faild to add cookies to header: {e:?}");
-			return;
-		}
+		Err(_) => return,
 	};
+
 	match HeaderValue::from_str(" Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/99.0.4844.51 Safari/537.36 Edg/99.0.1150.30") {
 		Ok(user_agent) => headers.insert(header::USER_AGENT, user_agent),
-		Err(e) => {
-			println!("Failed to add user agent to header: {e:?}");
-			return;
-		}
+		Err(_) => return,
 	};
+
 	match HeaderValue::from_str("application/x-www-form-urlencoded") {
 		Ok(content_type) => headers.insert(header::CONTENT_TYPE, content_type),
-		Err(e) => {
-			println!("Failed to add content type to header: {e:?}");
-			return;
-		}
+		Err(_) => return,
 	};
-	let params = [("mode", "delete"), ("index", "0"), ("x", "3"), ("y", "9")];
 
+	let params = [("mode", "delete"), ("index", "0"), ("x", "3"), ("y", "9")];
 	match client.post("https://order.subzero.com/instance1/servlet/WebDispatcher?mode=delete&index=0&x=3&y=9").headers(headers).form(&params).send().await {
 		Ok(_) => (),
 		Err(e) => panic!("Failed to remove item from cart: {e:?}"),
@@ -320,7 +295,6 @@ async fn subzero_validate_model_number(model_number: String, cookies: &str) -> S
 		Err(e) => return format!("Failed to add user agent to header: {e:?}"),
 	};
 
-	println!("SubZero Cookies: {cookies}");
 	match HeaderValue::from_str(cookies) {
 		Ok(cookies) => headers.insert(header::COOKIE, cookies),
 		Err(e) => return format!("Faild to add cookies to header: {e:?}"),
@@ -339,18 +313,12 @@ async fn subzero_validate_model_number(model_number: String, cookies: &str) -> S
 		Err(e) => return format!("Failed to get suggested items: {e:?}"),
 	};
 
-	let response_url = response.url().to_string();
-
 	let response_data = match response.text().await {
 		Ok(response_data) => response_data,
 		Err(e) => return format!("Failed to get suggested items: {e:?}"),
 	};
 
 	let response_data = response_data.split('{').collect::<Vec<&str>>()[0].to_string();
-
-	println!("Suggested items: {response_data}");
-	println!("Response url: {response_url}");
-
 	response_data
 }
 

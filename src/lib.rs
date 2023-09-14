@@ -1,13 +1,14 @@
 #![allow(dead_code)]
+use std::sync::Arc;
+
+use azure_identity::ImdsManagedIdentityCredential;
+use azure_security_keyvault::KeyvaultClient;
 pub use bsh::{bsh_availability, bsh_login};
 use chrono::Utc;
 use eggersmann_app_server_auth::User;
 pub use miele::miele_availability;
 use serde::{Deserialize, Serialize};
 pub use subzero::{subzero_availability, subzero_login};
-use azure_identity::ImdsManagedIdentityCredential;
-use azure_security_keyvault::KeyvaultClient;
-use std::sync::Arc;
 
 mod bsh;
 mod miele;
@@ -324,15 +325,15 @@ impl AvailabilityRequest {
 					let azure_credentials = ImdsManagedIdentityCredential::default();
 					let client = KeyvaultClient::new("https://eggappserverkeyvault.vault.azure.net", Arc::new(azure_credentials)).unwrap();
 					let bsh_username = client.secret_client().get("bsh-username").await.unwrap().value;
-                                        let bsh_password = client.secret_client().get("bsh-password").await.unwrap().value;
+					let bsh_password = client.secret_client().get("bsh-password").await.unwrap().value;
 					self.availability = Some(bsh::bsh_availability(self.clone(), bsh_username, bsh_password).await);
 					self
 				}
 				"subzero" => {
-                                        let azure_credentials = ImdsManagedIdentityCredential::default();
+					let azure_credentials = ImdsManagedIdentityCredential::default();
 					let client = KeyvaultClient::new("https://eggappserverkeyvault.vault.azure.net", Arc::new(azure_credentials)).unwrap();
 					let subzero_username = client.secret_client().get("subzero-username").await.unwrap().value;
-                                        let subzero_password = client.secret_client().get("subzero-password").await.unwrap().value;
+					let subzero_password = client.secret_client().get("subzero-password").await.unwrap().value;
 					self.availability = Some(subzero::subzero_availability(self.clone(), subzero_username, subzero_password).await);
 					self
 				}

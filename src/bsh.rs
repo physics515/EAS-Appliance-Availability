@@ -1,12 +1,14 @@
-use super::AvailabilityRequest;
+use std::fs::File;
+use std::io::Write;
+
 use chrono::Local;
 use eggersmann_app_server_auth::BSHJWTTokenClaims;
 use playwright::Playwright;
 use reqwest::header::{self, HeaderMap, HeaderValue};
 use reqwest::{Body, Client};
 use serde_json::{json, Value};
-use std::fs::File;
-use std::io::Write;
+
+use super::AvailabilityRequest;
 
 ///
 /// # BSH Availability
@@ -211,8 +213,8 @@ pub async fn bsh_login(username: String, password: String) -> bool {
 		let token_json = json!({ "token": BSHJWTTokenClaims::encode(cookies).await.unwrap() }).to_string();
 		let mut file = File::create("/easfiles/appliances/cookies/bsh_cookies.json").unwrap();
 		file.write_all(token_json.as_bytes()).unwrap();
-                true
+		true
 	} else {
-                false
-        }
+		false
+	}
 }

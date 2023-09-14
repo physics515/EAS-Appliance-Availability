@@ -1,12 +1,14 @@
-use super::AvailabilityRequest;
+use std::fs::File;
+use std::io::Write;
+use std::path::Path;
+
 use fuzzy_matcher::skim::SkimMatcherV2;
 use fuzzy_matcher::FuzzyMatcher;
 use office::{DataType, Excel};
 use reqwest::Client;
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
 use urlencoding::decode;
+
+use super::AvailabilityRequest;
 
 ///
 /// # Miele Availability
@@ -178,7 +180,6 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 					Some(model_number_result) => model_number_result as f32,
 					None => 0.0,
 				};
-				//println!("app model number: {}, model number: {}, score: {}", app_m_n, m_n, model_number_score);
 
 				let description_result = matcher.fuzzy_match(app_desc.as_str(), m_n.as_str());
 				let description_score: f32 = match description_result {
