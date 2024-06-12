@@ -1,7 +1,7 @@
+#![warn(clippy::pedantic, clippy::nursery, clippy::all, clippy::cargo)]
+#![allow(clippy::multiple_crate_versions, clippy::module_name_repetitions)]
 #![allow(dead_code)]
-use std::sync::Arc;
 
-use azure_identity::ImdsManagedIdentityCredential;
 use azure_security_keyvault::KeyvaultClient;
 pub use bsh::{bsh_availability, bsh_login};
 use chrono::Utc;
@@ -15,7 +15,7 @@ mod miele;
 mod subzero;
 
 ///
-/// # AvailabilityRequestUser
+/// # `AvailabilityRequestUser`
 /// User struct for use in the availability request.
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -30,7 +30,7 @@ pub struct AvailabilityRequestUser {
 }
 
 ///
-/// # AvailabilityRequest
+/// # `AvailabilityRequest`
 /// Struct for use in the availability request.
 ///
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -46,8 +46,8 @@ pub struct AvailabilityRequest {
 
 impl AvailabilityRequest {
 	///
-	/// # AvailabilityRequest::new
-	/// Create new AvailabilityRequest.
+	/// # `AvailabilityRequest::new`
+	/// Create new `AvailabilityRequest`.
 	///
 	/// ## Inputs
 	/// * `manufacturer`: String - The manufacturer of the appliance.
@@ -55,26 +55,27 @@ impl AvailabilityRequest {
 	/// * `model_number`: String - The model of the appliance.
 	///
 	/// ## Outputs
-	/// AvailabilityRequest - The new AvailabilityRequest.
+	/// `AvailabilityRequest` - The new `AvailabilityRequest`.
 	///
 	/// ## Example
 	/// ```
 	/// use crate::router::api_v1::availability::AvailabilityRequest;
 	/// let req: AvailabilityRequest = AvailabilityRequest::new("bsh", "houston", "HBLP651RUC");
 	/// ```
-	pub fn new(manufacturer: String, showroom: String, model_number: String) -> Self {
-		AvailabilityRequest { manufacturer: Some(manufacturer), showroom: Some(showroom), model_number: Some(model_number), warehouse: None, utc_time: None, availability: None, user: None }
+	#[must_use]
+	pub const fn new(manufacturer: String, showroom: String, model_number: String) -> Self {
+		Self { manufacturer: Some(manufacturer), showroom: Some(showroom), model_number: Some(model_number), warehouse: None, utc_time: None, availability: None, user: None }
 	}
 
 	///
-	/// # AvailabilityRequest::add_user
-	/// Add user to AvailabilityRequest.
+	/// # `AvailabilityRequest::add_user`
+	/// Add user to `AvailabilityRequest`.
 	///
 	/// ## Inputs
-	/// * `user`: AvailabilityRequestUser - The user to add to the AvailabilityRequest.
+	/// * `user`: `AvailabilityRequestUser` - The user to add to the `AvailabilityRequest`.
 	///
 	/// ## Outputs
-	/// AvailabilityRequest - The AvailabilityRequest with the user added.
+	/// `AvailabilityRequest` - The `AvailabilityRequest` with the user added.
 	///
 	/// ## Example
 	/// ```
@@ -88,7 +89,8 @@ impl AvailabilityRequest {
 	/// }
 	/// ```
 	///
-	pub async fn add_user(mut self, user: User) -> Self {
+	#[must_use]
+	pub fn add_user(mut self, user: User) -> Self {
 		self.user = Some(AvailabilityRequestUser {
 			id: user.token.id,
 			given_name: user.token.given_name,
@@ -102,7 +104,7 @@ impl AvailabilityRequest {
 	}
 
 	///
-	/// # AvailabilityRequest::parse_manufacturer
+	/// # `AvailabilityRequest::parse_manufacturer`
 	/// Parse the manufacturer from the request.
 	///
 	/// ## Example
@@ -114,9 +116,10 @@ impl AvailabilityRequest {
 	/// assert_eq!(req.manufacturer, "bsh");
 	/// ```
 	///
-	pub async fn parse_manufacturer(mut self) -> Self {
-		match self.manufacturer {
-			Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
+	#[must_use]
+	pub fn parse_manufacturer(mut self) -> Self {
+		if let Some(manufacturer) = self.manufacturer {
+			match manufacturer.to_lowercase().as_str() {
 				"bsh" => {
 					self.manufacturer = Some("bsh".to_string());
 					self
@@ -133,223 +136,231 @@ impl AvailabilityRequest {
 					self.manufacturer = None;
 					self
 				}
-			},
-			None => {
-				self.manufacturer = None;
-				self
 			}
+		} else {
+			self.manufacturer = None;
+			self
 		}
 	}
 
 	///
-	/// # AvailabilityRequest::get_warehouse
+	/// # `AvailabilityRequest::get_warehouse`
 	/// Get the warehouse from the request and pasrse it into a format that can be read by the manufacture interface.
 	///
-	pub async fn get_warehouse(mut self) -> Self {
-		match self.showroom.clone() {
-			Some(showroom) => match showroom.to_lowercase().as_str() {
-				"houston" => match self.manufacturer.clone() {
-					Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
-						"bsh" => {
-							self.warehouse = Some("US00002148".to_string());
-							self
+	#[allow(clippy::too_many_lines)]
+	#[must_use]
+	pub fn get_warehouse(mut self) -> Self {
+		if let Some(showroom) = self.showroom.clone() {
+			match showroom.to_lowercase().as_str() {
+				"houston" => {
+					if let Some(manufacturer) = self.manufacturer.clone() {
+						match manufacturer.to_lowercase().as_str() {
+							"bsh" => {
+								self.warehouse = Some("US00002148".to_string());
+								self
+							}
+							"subzero" => {
+								self.warehouse = Some("99432040".to_string());
+								self
+							}
+							"miele" => {
+								self.warehouse = Some("Forest Park, IL".to_string());
+								self
+							}
+							_ => {
+								self.warehouse = None;
+								self
+							}
 						}
-						"subzero" => {
-							self.warehouse = Some("99432040".to_string());
-							self
-						}
-						"miele" => {
-							self.warehouse = Some("Forest Park, IL".to_string());
-							self
-						}
-						_ => {
-							self.warehouse = None;
-							self
-						}
-					},
-					_ => {
+					} else {
 						self.warehouse = None;
 						self
 					}
-				},
-				"florida" => match self.manufacturer.clone() {
-					Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
-						"bsh" => {
-							self.warehouse = Some("US00000103".to_string());
-							self
+				}
+				"florida" => {
+					if let Some(manufacturer) = self.manufacturer.clone() {
+						match manufacturer.to_lowercase().as_str() {
+							"bsh" => {
+								self.warehouse = Some("US00000103".to_string());
+								self
+							}
+							"subzero" => {
+								self.warehouse = Some("99211620".to_string());
+								self
+							}
+							"miele" => {
+								self.warehouse = Some("Pompano Beach, FL".to_string());
+								self
+							}
+							_ => {
+								self.warehouse = None;
+								self
+							}
 						}
-						"subzero" => {
-							self.warehouse = Some("99211620".to_string());
-							self
-						}
-						"miele" => {
-							self.warehouse = Some("Pompano Beach, FL".to_string());
-							self
-						}
-						_ => {
-							self.warehouse = None;
-							self
-						}
-					},
-					_ => {
+					} else {
 						self.warehouse = None;
 						self
 					}
-				},
-				"los angeles" => match self.manufacturer.clone() {
-					Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
-						"bsh" => {
-							self.warehouse = Some("US00003803".to_string());
-							self
+				}
+				"los angeles" => {
+					if let Some(manufacturer) = self.manufacturer.clone() {
+						match manufacturer.to_lowercase().as_str() {
+							"bsh" => {
+								self.warehouse = Some("US00003803".to_string());
+								self
+							}
+							"subzero" => {
+								self.warehouse = Some("99614560".to_string());
+								self
+							}
+							"miele" => {
+								self.warehouse = Some("Stockton, CA".to_string());
+								self
+							}
+							_ => {
+								self.warehouse = None;
+								self
+							}
 						}
-						"subzero" => {
-							self.warehouse = Some("99614560".to_string());
-							self
-						}
-						"miele" => {
-							self.warehouse = Some("Stockton, CA".to_string());
-							self
-						}
-						_ => {
-							self.warehouse = None;
-							self
-						}
-					},
-					_ => {
+					} else {
 						self.warehouse = None;
 						self
 					}
-				},
-				"chicago" => match self.manufacturer.clone() {
-					Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
-						"bsh" => {
-							self.warehouse = Some("US00001842".to_string());
-							self
+				}
+				"chicago" => {
+					if let Some(manufacturer) = self.manufacturer.clone() {
+						match manufacturer.to_lowercase().as_str() {
+							"bsh" => {
+								self.warehouse = Some("US00001842".to_string());
+								self
+							}
+							"subzero" => {
+								self.warehouse = Some("99311630".to_string());
+								self
+							}
+							"miele" => {
+								self.warehouse = Some("Forest Park, IL".to_string());
+								self
+							}
+							_ => {
+								self.warehouse = None;
+								self
+							}
 						}
-						"subzero" => {
-							self.warehouse = Some("99311630".to_string());
-							self
-						}
-						"miele" => {
-							self.warehouse = Some("Forest Park, IL".to_string());
-							self
-						}
-						_ => {
-							self.warehouse = None;
-							self
-						}
-					},
-					_ => {
+					} else {
 						self.warehouse = None;
 						self
 					}
-				},
-				"new york" => match self.manufacturer.clone() {
-					Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
-						"bsh" => {
-							self.warehouse = Some("US00002933".to_string());
-							self
+				}
+				"new york" => {
+					if let Some(manufacturer) = self.manufacturer.clone() {
+						match manufacturer.to_lowercase().as_str() {
+							"bsh" => {
+								self.warehouse = Some("US00002933".to_string());
+								self
+							}
+							"subzero" => {
+								self.warehouse = Some("99103710".to_string());
+								self
+							}
+							"miele" => {
+								self.warehouse = Some("South Brunswick, NJ".to_string());
+								self
+							}
+							_ => {
+								self.warehouse = None;
+								self
+							}
 						}
-						"subzero" => {
-							self.warehouse = Some("99103710".to_string());
-							self
-						}
-						"miele" => {
-							self.warehouse = Some("South Brunswick, NJ".to_string());
-							self
-						}
-						_ => {
-							self.warehouse = None;
-							self
-						}
-					},
-					_ => {
+					} else {
 						self.warehouse = None;
 						self
 					}
-				},
-				"dallas" => match self.manufacturer.clone() {
-					Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
-						"bsh" => {
-							self.warehouse = Some("US00003189".to_string());
-							self
+				}
+				"dallas" => {
+					if let Some(manufacturer) = self.manufacturer.clone() {
+						match manufacturer.to_lowercase().as_str() {
+							"bsh" => {
+								self.warehouse = Some("US00003189".to_string());
+								self
+							}
+							"subzero" => {
+								self.warehouse = Some("99411540".to_string());
+								self
+							}
+							"miele" => {
+								self.warehouse = Some("Forest Park, IL".to_string());
+								self
+							}
+							_ => {
+								self.warehouse = None;
+								self
+							}
 						}
-						"subzero" => {
-							self.warehouse = Some("99411540".to_string());
-							self
-						}
-						"miele" => {
-							self.warehouse = Some("Forest Park, IL".to_string());
-							self
-						}
-						_ => {
-							self.warehouse = None;
-							self
-						}
-					},
-					_ => {
+					} else {
 						self.warehouse = None;
 						self
 					}
-				},
+				}
 				_ => {
 					self.warehouse = None;
 					self
 				}
-			},
-			None => {
-				self.warehouse = None;
-				self
 			}
+		} else {
+			self.warehouse = None;
+			self
 		}
 	}
 
 	///
-	/// # AvailabilityRequest::get_time
+	/// # `AvailabilityRequest::get_time`
 	/// Get the current time in the format %m/%d/%Y %I:%M:%S %p
 	///
-	pub async fn get_time(mut self) -> Self {
+	#[must_use]
+	pub fn get_time(mut self) -> Self {
 		let utc_time = Utc::now().format("%m/%d/%Y %I:%M:%S %p").to_string();
 		self.utc_time = Some(utc_time);
 		self
 	}
 
 	///
-	/// # AvailabilityRequest::get_availability
+	/// # `AvailabilityRequest::get_availability`
 	/// Get the availability for the requested product.
 	///
-	pub async fn get_availability(mut self) -> Self {
-		match self.manufacturer.clone() {
-			Some(manufacturer) => match manufacturer.to_lowercase().as_str() {
+	/// # Errors
+	/// todo
+	pub async fn get_availability(mut self) -> Result<Self, String> {
+		if let Some(manufacturer) = self.manufacturer.clone() {
+			match manufacturer.to_lowercase().as_str() {
 				"bsh" => {
-					let azure_credentials = ImdsManagedIdentityCredential::default();
-					let client = KeyvaultClient::new("https://eggappserverkeyvault.vault.azure.net", Arc::new(azure_credentials)).unwrap();
-					let bsh_username = client.secret_client().get("bsh-username").await.unwrap().value;
-					let bsh_password = client.secret_client().get("bsh-password").await.unwrap().value;
-					self.availability = Some(bsh::bsh_availability(self.clone(), bsh_username, bsh_password).await);
-					self
+					let azure_credentials = azure_identity::create_credential().map_err(|e| format!("Faild to get Azure Identity: {e}"))?;
+					let client = KeyvaultClient::new("https://eggappserverkeyvault.vault.azure.net", azure_credentials).map_err(|e| format!("Failed to get Keyvault Client: {e}"))?;
+					let bsh_username = client.secret_client().get("bsh-username").await.map_err(|_| "Faild to get BSH Username.".to_string())?.value;
+					let bsh_password = client.secret_client().get("bsh-password").await.map_err(|_| "Faild to get BSH Password.".to_string())?.value;
+					self.availability = Some(bsh::bsh_availability(self.clone(), bsh_username, bsh_password).await?);
+					Ok(self)
 				}
 				"subzero" => {
-					let azure_credentials = ImdsManagedIdentityCredential::default();
-					let client = KeyvaultClient::new("https://eggappserverkeyvault.vault.azure.net", Arc::new(azure_credentials)).unwrap();
-					let subzero_username = client.secret_client().get("subzero-username").await.unwrap().value;
-					let subzero_password = client.secret_client().get("subzero-password").await.unwrap().value;
-					self.availability = Some(subzero::subzero_availability(self.clone(), subzero_username, subzero_password).await);
-					self
+					let azure_credentials = azure_identity::create_credential().map_err(|e| format!("Faild to get Azure Identity: {e}"))?;
+					let client = KeyvaultClient::new("https://eggappserverkeyvault.vault.azure.net", azure_credentials).map_err(|e| format!("Failed to get Keyvault Client: {e}"))?;
+					let subzero_username = client.secret_client().get("subzero-username").await.map_err(|_| "Faild to get Subzero Username.".to_string())?.value;
+					let subzero_password = client.secret_client().get("subzero-password").await.map_err(|_| "Faild to get Subzero Password.".to_string())?.value;
+					self.availability = Some(subzero::subzero_availability(self.clone(), subzero_username, subzero_password).await?);
+					Ok(self)
 				}
 				"miele" => {
-					self.availability = Some(miele::miele_availability(self.clone()).await);
-					self
+					self.availability = Some(miele::miele_availability(self.clone()).await?);
+					Ok(self)
 				}
 				_ => {
 					self.availability = None;
-					self
+					Ok(self)
 				}
-			},
-			None => {
-				self.availability = None;
-				self
 			}
+		} else {
+			self.availability = None;
+			Ok(self)
 		}
 	}
 }

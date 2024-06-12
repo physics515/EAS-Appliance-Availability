@@ -15,12 +15,15 @@ use super::AvailabilityRequest;
 /// Gets the availability of the Miele appliances.
 ///
 /// ## Inputs
-/// * `request`: AvailabilityRequest
+/// * `request`: `AvailabilityRequest`
 ///
 /// ## Outputs
 /// String - The availability of the Miele appliances.
 ///
-pub async fn miele_availability(req: AvailabilityRequest) -> String {
+/// # Errors
+/// todo
+#[allow(clippy::cast_precision_loss, clippy::too_many_lines)]
+pub async fn miele_availability(req: AvailabilityRequest) -> Result<String, String> {
 	let file_name = "miele_appliance_availability.xlsx";
 	let root_path = Path::new("/easfiles/appliances/data/");
 	let file_path = Path::join(root_path, file_name);
@@ -29,45 +32,38 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 	let response = match client.get("https://ws15.mieleusa.com/sbo-reports/reports/download.php?id=SlyUOJt9vOFlwUcXZleX").send().await {
 		Ok(response) => response,
 		Err(e) => {
-			panic!("Failed to get Miele appliance availability spreadsheet: {e:?}");
+			return Ok(format!("Failed to get Miele appliance availability spreadsheet: {e:?}"));
 		}
 	};
 
 	let mut file = match File::create(&file_path) {
 		Ok(file) => file,
 		Err(e) => {
-			panic!("Failed to create Miele appliance availability spreadsheet: {e:?}");
+			return Ok(format!("Failed to create Miele appliance availability spreadsheet: {e:?}"));
 		}
 	};
 	let response_bytes = match response.bytes().await {
 		Ok(response_bytes) => response_bytes,
 		Err(e) => {
-			panic!("Failed to get Miele appliance availability spreadsheet: {e:?}");
+			return Ok(format!("Failed to get Miele appliance availability spreadsheet: {e:?}"));
 		}
 	};
 	match file.write_all(&response_bytes) {
-		Ok(_) => (),
+		Ok(()) => (),
 		Err(e) => {
-			panic!("Failed to write Miele appliance availability spreadsheet to file: {e:?}");
+			return Ok(format!("Failed to write Miele appliance availability spreadsheet to file: {e:?}"));
 		}
 	};
 
 	let mut excel = match Excel::open(&file_path) {
 		Ok(excel) => excel,
 		Err(e) => {
-			panic!("Failed to open Miele appliance availability spreadsheet: {e:?}");
+			return Ok(format!("Failed to open Miele appliance availability spreadsheet: {e:?}"));
 		}
 	};
 
-	let warehouse = match req.warehouse.clone() {
-		Some(warehouse) => warehouse,
-		None => return "No warehouse found.".to_string(),
-	};
-
-	let model_number = match req.model_number.clone() {
-		Some(model_number) => model_number,
-		None => return "No model number found.".to_string(),
-	};
+	let Some(warehouse) = req.warehouse.clone() else { return Ok("No warehouse found.".to_string()) };
+	let Some(model_number) = req.model_number.clone() else { return Ok("No model number found.".to_string()) };
 
 	match excel.worksheet_range(&warehouse) {
 		Ok(range) => {
@@ -76,19 +72,19 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 
 			match range.rows().next() {
 				Some(row) => {
-					row.iter().for_each(|cell| {
+					for cell in row {
 						let value = match cell {
 							DataType::String(s) => s.to_string(),
 							DataType::Float(f) => f.to_string(),
 							DataType::Int(i) => i.to_string(),
 							DataType::Bool(b) => b.to_string(),
-							_ => "".to_string(),
+							_ => String::new(),
 						};
 						headers.push((value, i));
 						i += 1;
-					});
+					}
 				}
-				None => return "Failed to get row from Miele appliance availability spreadsheet.".to_string(),
+				None => return Ok("Failed to get row from Miele appliance availability spreadsheet.".to_string()),
 			}
 
 			let mut miele_appliances: Vec<MieleAppliance> = range
@@ -96,21 +92,21 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 				.skip(1)
 				.map(|row| {
 					let mut appliance = MieleAppliance {
-						timestamp: "".to_string(),
-						sku: "".to_string(),
-						upc: "".to_string(),
-						category: "".to_string(),
-						subcategory: "".to_string(),
-						model_number: "".to_string(),
-						description: "".to_string(),
-						current_umrp: "".to_string(),
-						new_umrp: "".to_string(),
-						dealer_cost_level: "".to_string(),
-						warehouse_number: "".to_string(),
-						available_qty: "".to_string(),
-						sales_status: "".to_string(),
-						next_available_qty: "".to_string(),
-						next_available_date: "".to_string(),
+						timestamp: String::new(),
+						sku: String::new(),
+						upc: String::new(),
+						category: String::new(),
+						subcategory: String::new(),
+						model_number: String::new(),
+						description: String::new(),
+						current_umrp: String::new(),
+						new_umrp: String::new(),
+						dealer_cost_level: String::new(),
+						warehouse_number: String::new(),
+						available_qty: String::new(),
+						sales_status: String::new(),
+						next_available_qty: String::new(),
+						next_available_date: String::new(),
 						score: 0.0,
 					};
 
@@ -120,12 +116,9 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 							DataType::Float(f) => f.to_string(),
 							DataType::Int(i) => i.to_string(),
 							DataType::Bool(b) => b.to_string(),
-							_ => "".to_string(),
+							_ => String::new(),
 						};
-						let header = match headers.iter().find(|header| header.1 == i) {
-							Some(header) => header.0.clone(),
-							None => "".to_string(),
-						};
+						let header = headers.iter().find(|header| header.1 == i).map_or_else(String::new, |header| header.0.clone());
 						match header.as_str().to_lowercase().as_str() {
 							"timestamp" => appliance.timestamp = value,
 							"sku#" => appliance.sku = value,
@@ -150,21 +143,21 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 				.collect();
 
 			let mut best_match = MieleAppliance {
-				timestamp: "".to_string(),
-				sku: "".to_string(),
-				upc: "".to_string(),
-				category: "".to_string(),
-				subcategory: "".to_string(),
-				model_number: "".to_string(),
-				description: "".to_string(),
-				current_umrp: "".to_string(),
-				new_umrp: "".to_string(),
-				dealer_cost_level: "".to_string(),
-				warehouse_number: "".to_string(),
-				available_qty: "".to_string(),
-				sales_status: "".to_string(),
-				next_available_qty: "".to_string(),
-				next_available_date: "".to_string(),
+				timestamp: String::new(),
+				sku: String::new(),
+				upc: String::new(),
+				category: String::new(),
+				subcategory: String::new(),
+				model_number: String::new(),
+				description: String::new(),
+				current_umrp: String::new(),
+				new_umrp: String::new(),
+				dealer_cost_level: String::new(),
+				warehouse_number: String::new(),
+				available_qty: String::new(),
+				sales_status: String::new(),
+				next_available_qty: String::new(),
+				next_available_date: String::new(),
 				score: 0.0,
 			};
 
@@ -173,19 +166,18 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 
 				let app_m_n: String = miele_appliance.model_number.to_lowercase().trim().to_string().chars().filter(|c| !c.is_whitespace()).collect();
 				let app_desc: String = miele_appliance.description.to_lowercase().trim().to_string().chars().filter(|c| !c.is_whitespace()).collect();
-				let m_n: String = decode(&model_number).expect("Cannot decode model number.").to_lowercase().trim().to_string().chars().filter(|c| !c.is_whitespace()).collect();
+				let m_n: String = match decode(&model_number) {
+					Ok(m_n) => m_n.to_lowercase().trim().to_string().chars().filter(|c| !c.is_whitespace()).collect(),
+					Err(_) => {
+						return Ok("Cannot decode model number.".to_string());
+					}
+				};
 
 				let model_number_result = matcher.fuzzy_match(app_m_n.as_str(), m_n.as_str());
-				let model_number_score: f32 = match model_number_result {
-					Some(model_number_result) => model_number_result as f32,
-					None => 0.0,
-				};
+				let model_number_score: f64 = model_number_result.map_or(0.0, |model_number_result| model_number_result as f64);
 
 				let description_result = matcher.fuzzy_match(app_desc.as_str(), m_n.as_str());
-				let description_score: f32 = match description_result {
-					Some(description_result) => description_result as f32,
-					None => 0.0,
-				};
+				let description_score: f64 = description_result.map_or(0.0, |description_result| description_result as f64);
 
 				let score = model_number_score + description_score;
 				miele_appliances[i].score = score;
@@ -195,17 +187,11 @@ pub async fn miele_availability(req: AvailabilityRequest) -> String {
 			}
 
 			match best_match.next_available_date.as_str() {
-				"" => {
-					format!("Next avalability for {} is unknown.", best_match.model_number)
-				}
-				_ => {
-					format!("Found: {}, Available: {}", best_match.model_number, best_match.next_available_date)
-				}
+				"" => Ok(format!("Next avalability for {} is unknown.", best_match.model_number)),
+				_ => Ok(format!("Found: {}, Available: {}", best_match.model_number, best_match.next_available_date)),
 			}
 		}
-		Err(err) => {
-			format!("Error: {err}")
-		}
+		Err(err) => Ok(format!("Error: {err}")),
 	}
 }
 
@@ -230,5 +216,5 @@ struct MieleAppliance {
 	sales_status: String,
 	next_available_qty: String,
 	next_available_date: String,
-	score: f32,
+	score: f64,
 }
