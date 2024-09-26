@@ -70,7 +70,7 @@ pub async fn bsh_availability(req: AvailabilityRequest, username: String, passwo
 			Err(e) => return Ok(format!("Failed to get x_csrf_token: {e:?}")),
 		};
 		resp.headers().get("x-csrf-token").map_or_else(
-			|| Ok(format!("Failed to get x_csrf_token")),
+			|| Ok("Failed to get x_csrf_token".to_string()),
 			|x_csrf_token| match x_csrf_token.to_str() {
 				Ok(x_csrf_token) => Ok::<String, String>(x_csrf_token.to_string()),
 				Err(e) => Ok(format!("Failed to convert x_csrf_token to string: {e:?}")),

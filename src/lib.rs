@@ -1,4 +1,4 @@
-#![warn(clippy::pedantic, clippy::nursery, clippy::all, clippy::cargo)]
+#![warn(clippy::pedantic, clippy::nursery, clippy::all)]
 #![allow(clippy::multiple_crate_versions, clippy::module_name_repetitions)]
 #![allow(dead_code)]
 
